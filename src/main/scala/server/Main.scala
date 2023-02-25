@@ -7,6 +7,7 @@ import json.messages.JSONParser.Envelope
 import java.io.{BufferedReader, InputStreamReader}
 
 object Main {
+
   import dev.mccue.json.Json
 
   var node = ""
@@ -34,12 +35,13 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-    val reader = Json.reader(new BufferedReader(new InputStreamReader(System.in)))
+    val reader = new BufferedReader(new InputStreamReader(System.in))
     while (true) {
-      val json = reader.read();
-      if(json == null) {
+      val line = reader.readLine()
+      if (line == null) {
         return
       }
+      val json = Json.readString(line)
       handle(json)
     }
   }
