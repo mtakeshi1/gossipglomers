@@ -1,0 +1,4 @@
+received {"id":0,"src":"c0","dest":"n4","body":{"type":"init","node_id":"n4","node_ids":["n1","n2","n3","n4","n5"],"msg_id":1}}
+sending {"src":"n4","dest":"c0","body":{"msg_id":2,"type":"init_ok","in_reply_to":1}}
+received {"id":14,"src":"c12","dest":"n4","body":{"echo":"Please echo 57","type":"echo","msg_id":1}}
+sending {"src":"n4","dest":"c12","body":{"echo":"Please echo 57","type":"echo_ok"}}

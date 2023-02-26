@@ -1,88 +1,51 @@
 package json.messages
 
-import dev.mccue.json.{Json, JsonDecoder}
+import io.circe.*
+import io.circe.Decoder.Result
+import io.circe.generic.semiauto.*
+import io.circe.parser.*
+import io.circe.syntax.*
+import json.messages.JSONParser.{MessageBody, ReplyBody}
+
 import scala.jdk.CollectionConverters.*
 
 case object BasicMessages {
-  def toJsonArray(l: List[String]) = {
-    val builder = Json.arrayBuilder()
-    l.foreach(builder.add)
-    builder
+
+  val types: List[String] = List("init", "init_ok", "echo", "echo_ok")
+
+  def canDecode(typeName: String): Boolean = types.contains(typeName)
+
+  def decodeBody(body: Json): Result[MessageBody] = {
+    (body \\ "type").collectFirst {case f => f.asString }.flatten match
+      case Some("init") => initDecoder.decodeJson(body)
+      case Some("init_ok") => initOkDecoder.decodeJson(body)
+      case Some("echo") => echoDecoder.decodeJson(body)
+      case Some("echo_ok") => echoOkDecoder.decodeJson(body)
+      case a => sys.error("unknown message type: " + a)
+
   }
 
-  trait MessageBody {
-    def typeName: String
+  //received {"id":0,"src":"c0","dest":"n4","body":{"type":"init","node_id":"n4","node_ids":["n1","n2","n3","n4","n5"],"msg_id":1}}
 
-    def toJson: Json
-  }
 
-  object EmptyBody extends MessageBody {
-    override def typeName: String = "nothing"
+  implicit val initDecoder: Decoder[InitBody] = deriveDecoder
+  implicit val initOkDecoder: Decoder[InitReply] = deriveDecoder
+  implicit val echoDecoder: Decoder[Echo] = deriveDecoder
+  implicit val echoOkDecoder: Decoder[EchoReply] = deriveDecoder
 
-    override def toJson: Json = ???
-  }
-
-  case class InitBody(id: Long, nodeId: String, nodeIds: List[String]) extends MessageBody {
+  case class InitBody(msg_id: Long, node_id: String, node_ids: List[String]) extends MessageBody {
     override def typeName: String = "init"
-
-    override def toJson: Json = Json.objectBuilder()
-      .put("msg_id", id)
-      .put("type", typeName)
-      .put("node_id", nodeId)
-      .put("node_ids", toJsonArray(nodeIds))
-      .toJson
   }
-
-  object InitBody {
-    def fromJson(json: Json): MessageBody = {
-      InitBody(
-        JsonDecoder.field(json, "msg_id", JsonDecoder.long_ _),
-        JsonDecoder.field(json, "node_id", JsonDecoder.string _),
-        JsonDecoder.field(json, "node_ids", JsonDecoder.array(JsonDecoder.string _)).asScala.toList
-      )
-    }
-  }
-
-  case class InitReply(id: Long, inReplyTo: Long) extends MessageBody {
+  case class InitReply(msg_id: Long, in_reply_to: Long) extends ReplyBody {
     override def typeName: String = "init_ok"
-
-    /*
-     body: {msg_id: 123
-            in_reply_to: 1
-            type: "init_ok"}}
-    */
-    override def toJson: Json = Json.objectBuilder()
-      .put("msg_id", id)
-      .put("type", typeName)
-      .put("in_reply_to", inReplyTo)
-      .toJson
   }
-
-  object InitReply {
-    def fromJson(json: Json): InitReply = {
-      InitReply (
-        JsonDecoder.field(json, "msg_id", JsonDecoder.long_ _),
-        JsonDecoder.field(json, "in_reply_to", JsonDecoder.long_ _)
-      )
-    }
-  }
-
-  case class Echo(echo: String) extends MessageBody {
+  case class Echo(echo: String, msg_id: Long) extends MessageBody {
     override def typeName: String = "echo"
-    override def toJson: Json = Json.objectBuilder().put("echo", echo).put("type", typeName).toJson
   }
-  object Echo {
-    def fromJson(json: Json): MessageBody = Echo(JsonDecoder.field(json, "echo", JsonDecoder.string _))
-  }
-
-  case class EchoReply (echo: String) extends MessageBody{
+  case class EchoReply(echo: String, msg_id: Long, in_reply_to: Long) extends ReplyBody {
     override def typeName: String = "echo_ok"
-    override def toJson: Json = Json.objectBuilder().put("echo", echo).put("type", typeName).toJson
-  }
 
-  object EchoReply {
-    def fromJson(json: Json): MessageBody = EchoReply(JsonDecoder.field(json, "echo", JsonDecoder.string _))
+    override def subFields: List[(String, Any)] = List(("echo", echo))
   }
-
 
 }

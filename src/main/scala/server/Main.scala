@@ -1,5 +1,7 @@
 package server
 
+import io.circe.*
+import io.circe.parser.*
 import json.messages.BasicMessages.*
 import json.messages.JSONParser
 import json.messages.JSONParser.Envelope
@@ -8,27 +10,33 @@ import java.io.{BufferedReader, InputStreamReader}
 
 object Main {
 
-  import dev.mccue.json.Json
-
-  var node = ""
-  var knownNodes: List[String] = List()
+  private var maybeServer: Option[Server] = None
 
   def handle(json: Json): Unit = {
-    val env = JSONParser.Envelope.fromJson(json)
-    env.body match
-      case InitBody(id, nodeId, nodeIds) => {
-        this.node = nodeId
-        this.knownNodes = nodeIds
-        write(Envelope(Option(this.node), env.src, InitReply(id + 1, id)).toJson)
+    for {
+      env <- JSONParser.decodeEnvelope.decodeJson(json)
+    } yield {
+      (maybeServer, env.body) match {
+        case (None, InitBody(msgId, myId, otherNodes)) => {
+          maybeServer = Some(Server(myId, otherNodes))
+          write(Envelope(env.dest, env.src, InitReply(msgId + 1, msgId)).toJson)
+        }
+        case (Some(server), _) => server.handle(env)
+        case _ => sys.error(s"unknown state: $maybeServer $env")
       }
-      case Echo(echo) => write(Envelope(Option(this.node), env.src, EchoReply(echo)).toJson)
-      case _ => ???
+    }
   }
 
-
+  def send(env: Envelope): Unit = {
+    write(env.toJson)
+  }
+  
   def write(json: Json): Unit = {
     this.synchronized {
-      System.out.println(Json.writeString(json))
+      val str = json.noSpaces
+      System.err.println("sending " + str)
+      System.out.println(str)
+      System.out.flush()
       System.out.flush()
     }
   }
@@ -41,8 +49,11 @@ object Main {
       if (line == null) {
         return
       }
-      val json = Json.readString(line)
-      handle(json)
+      if (!line.isBlank) {
+        parse(line) match
+          case Right(envelope) => handle(envelope)
+          case Left(error) => throw error
+      }
     }
   }
 

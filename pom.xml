@@ -31,26 +31,26 @@
             <artifactId>scala3-library_3</artifactId>
             <version>3.2.2</version>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>io.circe</groupId>-->
-<!--            <artifactId>circe-core_3</artifactId>-->
-<!--            <version>${circe.version}</version>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>io.circe</groupId>-->
-<!--            <artifactId>circe-parser_3</artifactId>-->
-<!--            <version>${circe.version}</version>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>io.circe</groupId>-->
-<!--            <artifactId>circe-generic_3</artifactId>-->
-<!--            <version>${circe.version}</version>-->
-<!--        </dependency>-->
         <dependency>
-            <groupId>dev.mccue</groupId>
-            <artifactId>json</artifactId>
-            <version>0.2.1</version>
+            <groupId>io.circe</groupId>
+            <artifactId>circe-core_3</artifactId>
+            <version>${circe.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.circe</groupId>
+            <artifactId>circe-parser_3</artifactId>
+            <version>${circe.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.circe</groupId>
+            <artifactId>circe-generic_3</artifactId>
+            <version>${circe.version}</version>
+        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>dev.mccue</groupId>-->
+<!--            <artifactId>json</artifactId>-->
+<!--            <version>0.2.1</version>-->
+<!--        </dependency>-->
 
     </dependencies>
 
