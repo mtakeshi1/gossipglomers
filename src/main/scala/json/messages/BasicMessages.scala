@@ -5,18 +5,18 @@ import io.circe.Decoder.Result
 import io.circe.generic.semiauto.*
 import io.circe.parser.*
 import io.circe.syntax.*
-import json.messages.JSONParser.{MessageBody, ReplyBody}
+import json.messages.JSONParser.{BodyDecoder, MessageBody, ReplyBody}
 
 import scala.jdk.CollectionConverters.*
 
-case object BasicMessages {
+case object BasicMessages extends BodyDecoder {
 
   val types: List[String] = List("init", "init_ok", "echo", "echo_ok")
 
   def canDecode(typeName: String): Boolean = types.contains(typeName)
 
   def decodeBody(body: Json): Result[MessageBody] = {
-    (body \\ "type").collectFirst {case f => f.asString }.flatten match
+    (body \\ "type").collectFirst { case f => f.asString }.flatten match
       case Some("init") => initDecoder.decodeJson(body)
       case Some("init_ok") => initOkDecoder.decodeJson(body)
       case Some("echo") => echoDecoder.decodeJson(body)
@@ -36,16 +36,19 @@ case object BasicMessages {
 
   implicit val topologyDecoder: Decoder[Topology] = deriveDecoder
   implicit val topologyOkDecoder: Decoder[TopologyOk] = deriveDecoder
-  
+
   case class InitBody(msg_id: Long, node_id: String, node_ids: List[String]) extends MessageBody {
     override def typeName: String = "init"
   }
+
   case class InitReply(msg_id: Long, in_reply_to: Long) extends ReplyBody {
     override def typeName: String = "init_ok"
   }
+
   case class Echo(echo: String, msg_id: Long) extends MessageBody {
     override def typeName: String = "echo"
   }
+
   case class EchoReply(echo: String, msg_id: Long, in_reply_to: Long) extends ReplyBody {
     override def typeName: String = "echo_ok"
 

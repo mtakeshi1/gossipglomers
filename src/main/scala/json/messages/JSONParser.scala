@@ -1,10 +1,11 @@
 package json.messages
 
-import java.util.Optional
-import scala.jdk.CollectionConverters.*
 import io.circe.*
 import io.circe.Decoder.Result
 import io.circe.generic.semiauto.*
+
+import java.util.Optional
+import scala.jdk.CollectionConverters.*
 
 object JSONParser {
 
@@ -35,6 +36,12 @@ object JSONParser {
     }
   }
 
+  trait BodyDecoder {
+    def decodeBody(body: Json): Result[MessageBody]
+  }
+
+  val bodyDecoders: List[BodyDecoder] = List(BasicMessages, Chapter2, Chapter3)
+
   trait ReplyBody extends MessageBody {
     def in_reply_to: Long
 
@@ -46,7 +53,9 @@ object JSONParser {
 
   case class Envelope(src: Option[String], dest: Option[String], body: MessageBody) {
     def this(s: String, d: String, b: MessageBody) = this(Some(s), Some(d), b)
+
     def toJson: Json = encodeEnvelope.apply(this)
+
     def replyWithBody(newBody: MessageBody): Envelope = Envelope(dest, src, newBody)
   }
 
@@ -60,8 +69,9 @@ object JSONParser {
     maybeBody match
       case Left(value) => Left(value)
       case Right(value) => {
-        BasicMessages.decodeBody(value)
-          .orElse(Chapter2.decodeBody(value))
+        bodyDecoders.to(LazyList).map( dec => dec.decodeBody(value)).find(_.isRight).getOrElse(Left(DecodingFailure("cannot decode: " + value, List())))
+//        BasicMessages.decodeBody(value)
+//          .orElse(Chapter2.decodeBody(value))
       }
   }
 

@@ -10,6 +10,7 @@ import java.io.{BufferedReader, InputStreamReader}
 
 object Main {
 
+  @volatile
   private var maybeServer: Option[Server] = None
 
   def handle(json: Json): Unit = {
@@ -50,6 +51,7 @@ object Main {
         return
       }
       if (!line.isBlank) {
+        System.err.println("received " + line)
         parse(line) match
           case Right(envelope) => handle(envelope)
           case Left(error) => throw error
