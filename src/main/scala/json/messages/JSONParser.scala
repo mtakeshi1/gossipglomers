@@ -47,6 +47,7 @@ object JSONParser {
   case class Envelope(src: Option[String], dest: Option[String], body: MessageBody) {
     def this(s: String, d: String, b: MessageBody) = this(Some(s), Some(d), b)
     def toJson: Json = encodeEnvelope.apply(this)
+    def replyWithBody(newBody: MessageBody): Envelope = Envelope(dest, src, newBody)
   }
 
   implicit val encodeEnvelope: Encoder[Envelope] = new Encoder[Envelope]:
@@ -56,7 +57,12 @@ object JSONParser {
         ("body", a.body.toJson))
 
   def parseBody(maybeBody: Result[Json]): Result[MessageBody] = {
-    maybeBody.flatMap(BasicMessages.decodeBody)
+    maybeBody match
+      case Left(value) => Left(value)
+      case Right(value) => {
+        BasicMessages.decodeBody(value)
+          .orElse(Chapter2.decodeBody(value))
+      }
   }
 
   implicit val decodeEnvelope: Decoder[Envelope] = new Decoder[Envelope]:

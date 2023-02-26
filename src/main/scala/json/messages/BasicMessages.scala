@@ -21,8 +21,9 @@ case object BasicMessages {
       case Some("init_ok") => initOkDecoder.decodeJson(body)
       case Some("echo") => echoDecoder.decodeJson(body)
       case Some("echo_ok") => echoOkDecoder.decodeJson(body)
-      case a => sys.error("unknown message type: " + a)
-
+      case Some("topology") => topologyDecoder.decodeJson(body)
+      case Some("topology_ok") => topologyOkDecoder.decodeJson(body)
+      case a => Left(DecodingFailure("unknown type: " + a, List()))
   }
 
   //received {"id":0,"src":"c0","dest":"n4","body":{"type":"init","node_id":"n4","node_ids":["n1","n2","n3","n4","n5"],"msg_id":1}}
@@ -33,6 +34,9 @@ case object BasicMessages {
   implicit val echoDecoder: Decoder[Echo] = deriveDecoder
   implicit val echoOkDecoder: Decoder[EchoReply] = deriveDecoder
 
+  implicit val topologyDecoder: Decoder[Topology] = deriveDecoder
+  implicit val topologyOkDecoder: Decoder[TopologyOk] = deriveDecoder
+  
   case class InitBody(msg_id: Long, node_id: String, node_ids: List[String]) extends MessageBody {
     override def typeName: String = "init"
   }
@@ -46,6 +50,14 @@ case object BasicMessages {
     override def typeName: String = "echo_ok"
 
     override def subFields: List[(String, Any)] = List(("echo", echo))
+  }
+
+  case class Topology(msg_id: Long, topology: Map[String, List[String]]) extends MessageBody {
+    override def typeName: String = "topology"
+  }
+
+  case class TopologyOk(msg_id: Long, in_reply_to: Long) extends ReplyBody {
+    override def typeName: String = "topology_ok"
   }
 
 }
