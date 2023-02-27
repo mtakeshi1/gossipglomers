@@ -20,7 +20,7 @@ case class Server(nodeId: String, allNodes: List[String]) {
   val idGen: AtomicLong = new AtomicLong(myIndex)
 
   def otherNodes: List[String] = {
-//    topology.flatMap(_.get(nodeId)).getOrElse(broadcastStrategy.selectNodesToSend(nodeId, allNodes))
+    //    topology.flatMap(_.get(nodeId)).getOrElse(broadcastStrategy.selectNodesToSend(nodeId, allNodes))
     broadcastStrategy.selectNodesToSend(nodeId, allNodes)
   }
 
@@ -53,7 +53,7 @@ case class Server(nodeId: String, allNodes: List[String]) {
     synchronized {
       if (!acksReceived.containsKey(envelope.body.msg_id) && retryCount < maxRetries) {
         send(envelope)
-        val delay = 100 * Math.min(1 + retryCount, 5)
+        val delay = 100// * Math.min(1 + retryCount, 5)
         scheduler.schedule(new Runnable {
           override def run(): Unit = checkAck(envelope, retryCount + 1)
         }, delay, TimeUnit.MILLISECONDS)
@@ -63,11 +63,13 @@ case class Server(nodeId: String, allNodes: List[String]) {
 
   def sendWithRetry(envelopeFactory: () => Envelope): Unit = {
     send(envelopeFactory())
-    scheduler.schedule(new Runnable {override def run(): Unit = checkAck(envelopeFactory())}, 100, TimeUnit.MILLISECONDS)
+    scheduler.schedule(new Runnable {
+      override def run(): Unit = checkAck(envelopeFactory())
+    }, 100, TimeUnit.MILLISECONDS)
   }
 
   def broadcast(envelope: Envelope): Unit = {
-    broadcastStrategy.selectNodesToSend(nodeId, allNodes).map(n => envelope.copy(dest = Some(n) )).foreach(send)
+    broadcastStrategy.selectNodesToSend(nodeId, allNodes).map(n => envelope.copy(dest = Some(n))).foreach(send)
   }
 
   def logState(): Unit = {
@@ -90,14 +92,14 @@ case class Server(nodeId: String, allNodes: List[String]) {
         }
         case Generate(msg_id) => Main.send(envelope.replyWithBody(GenerateReply(newId(), msg_id, newId())))
         case Broadcast(msg_id, message) => {
-          if(received.add(message)) {
-//            otherNodes.filter{n => !envelope.src.contains(n)}.foreach(n => send(Envelope(envelope.dest, Some(n), Broadcast(newId(), message))))
+          if (received.add(message)) {
+            //            otherNodes.filter{n => !envelope.src.contains(n)}.foreach(n => send(Envelope(envelope.dest, Some(n), Broadcast(newId(), message))))
             val next = newId()
-            otherNodes.filter{n => !envelope.src.contains(n)}.foreach(n => sendWithRetry(() => Envelope(envelope.dest, Some(n), Broadcast(next, message))))
+            otherNodes.filter { n => !envelope.src.contains(n) }.foreach(n => sendWithRetry(() => Envelope(envelope.dest, Some(n), Broadcast(next, message))))
           }
           send(envelope.replyWithBody(BroadcastOk(newId(), msg_id)))
         }
-        case _:BroadcastOk => {}
+        case _: BroadcastOk => {}
         case Read(msg_id) => send(envelope.replyWithBody(ReadOk(newId(), msg_id, received.toList)))
         case _ => sys.error("unknown message: " + envelope.body)
       }
