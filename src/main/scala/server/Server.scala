@@ -53,17 +53,17 @@ case class Server(nodeId: String, allNodes: List[String]) {
     synchronized {
       if (!acksReceived.containsKey(envelope.body.msg_id) && retryCount < maxRetries) {
         send(envelope)
-        val delay = Math.min(1 + retryCount, 5)
+        val delay = 100 * Math.min(1 + retryCount, 5)
         scheduler.schedule(new Runnable {
           override def run(): Unit = checkAck(envelope, retryCount + 1)
-        }, delay, TimeUnit.SECONDS)
+        }, delay, TimeUnit.MILLISECONDS)
       }
     }
   }
 
   def sendWithRetry(envelopeFactory: () => Envelope): Unit = {
     send(envelopeFactory())
-    scheduler.schedule(new Runnable {override def run(): Unit = checkAck(envelopeFactory())}, 1, TimeUnit.SECONDS)
+    scheduler.schedule(new Runnable {override def run(): Unit = checkAck(envelopeFactory())}, 100, TimeUnit.MILLISECONDS)
   }
 
   def broadcast(envelope: Envelope): Unit = {
