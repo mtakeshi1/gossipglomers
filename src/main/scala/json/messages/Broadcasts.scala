@@ -67,6 +67,15 @@ object Broadcasts {
     }
   }
 
+  object SingleNodeFanOutStrategy extends BroadcastStragegy {
+    override def selectNodesToSend(myId: String, allNodes: List[String]): List[String] = {
+      val s = allNodes.sorted
+      val i = s.indexOf(myId)
+      if(i == 0) s.tail
+      else List(s.head)
+    }
+  }
+
   @main
   def main(): Unit = {
     val all = List("n0","n1","n2","n3","n4","n5","n6","n7","n8","n9","n10","n11","n12","n13","n14","n15","n16","n17","n18","n19").sorted

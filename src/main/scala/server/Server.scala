@@ -20,7 +20,8 @@ case class Server(nodeId: String, allNodes: List[String]) {
   val idGen: AtomicLong = new AtomicLong(myIndex)
 
   def otherNodes: List[String] = {
-    topology.flatMap(_.get(nodeId)).getOrElse(broadcastStrategy.selectNodesToSend(nodeId, allNodes))
+//    topology.flatMap(_.get(nodeId)).getOrElse(broadcastStrategy.selectNodesToSend(nodeId, allNodes))
+    broadcastStrategy.selectNodesToSend(nodeId, allNodes)
   }
 
   def closeNodes: List[String] = {
@@ -40,28 +41,29 @@ case class Server(nodeId: String, allNodes: List[String]) {
     t
   })
 
-  val broadcastStrategy: Broadcasts.BroadcastStragegy = Broadcasts.StarStrategy
+  val broadcastStrategy: Broadcasts.BroadcastStragegy = Broadcasts.SingleNodeFanOutStrategy
 
-  log(s"broadcast from $nodeId would yield: ${otherNodes}")
+  log(s"broadcast from $nodeId would yield: $otherNodes")
 
   def newId(): Long = idGen.addAndGet(incr)
 
   def send(envelope: Envelope): Unit = Main.send(envelope)
 
   def checkAck(envelope: Envelope, retryCount: Int = 0): Unit = {
-    if(!acksReceived.containsKey(envelope.body.msg_id) && retryCount < maxRetries) {
-      send(envelope)
-      val delay = Math.min(1 + retryCount, 5)
-      scheduler.schedule(new Runnable {
-        override def run(): Unit = checkAck(envelope, retryCount+1)
-      }, delay, TimeUnit.SECONDS)
+    synchronized {
+      if (!acksReceived.containsKey(envelope.body.msg_id) && retryCount < maxRetries) {
+        send(envelope)
+        val delay = Math.min(1 + retryCount, 5)
+        scheduler.schedule(new Runnable {
+          override def run(): Unit = checkAck(envelope, retryCount + 1)
+        }, delay, TimeUnit.SECONDS)
+      }
     }
-
   }
 
-  def sendWithRetry(envelope: Envelope): Unit = {
-    send(envelope)
-    scheduler.schedule(new Runnable {override def run(): Unit = checkAck(envelope)}, 1, TimeUnit.SECONDS)
+  def sendWithRetry(envelopeFactory: () => Envelope): Unit = {
+    send(envelopeFactory())
+    scheduler.schedule(new Runnable {override def run(): Unit = checkAck(envelopeFactory())}, 1, TimeUnit.SECONDS)
   }
 
   def broadcast(envelope: Envelope): Unit = {
@@ -69,7 +71,7 @@ case class Server(nodeId: String, allNodes: List[String]) {
   }
 
   def logState(): Unit = {
-    System.err.println(s"[$nodeId] nextId: ${idGen.get()} currentState: ${received.toList}")
+    System.err.println(s"[$nodeId] nextId: ${idGen.get()} currentState: ${received.toList} acks: ${acksReceived.keySet()}")
   }
 
   def log(msg: String): Unit = System.err.println(msg)
@@ -89,7 +91,9 @@ case class Server(nodeId: String, allNodes: List[String]) {
         case Generate(msg_id) => Main.send(envelope.replyWithBody(GenerateReply(newId(), msg_id, newId())))
         case Broadcast(msg_id, message) => {
           if(received.add(message)) {
-            otherNodes.filter{n => !envelope.src.contains(n)}.foreach(n => sendWithRetry(Envelope(envelope.dest, Some(n), Broadcast(newId(), message))))
+//            otherNodes.filter{n => !envelope.src.contains(n)}.foreach(n => send(Envelope(envelope.dest, Some(n), Broadcast(newId(), message))))
+            val next = newId()
+            otherNodes.filter{n => !envelope.src.contains(n)}.foreach(n => sendWithRetry(() => Envelope(envelope.dest, Some(n), Broadcast(next, message))))
           }
           send(envelope.replyWithBody(BroadcastOk(newId(), msg_id)))
         }
