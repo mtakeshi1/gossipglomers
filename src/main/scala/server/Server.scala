@@ -42,7 +42,7 @@ case class Server(nodeId: String, allNodes: List[String]) {
     t
   })
 
-  val broadcastStrategy: Broadcasts.BroadcastStragegy = Broadcasts.SingleNodeFanOutStrategy
+  val broadcastStrategy: Broadcasts.BroadcastStragegy = Broadcasts.DoubleRootStrategy
 
   log(s"broadcast from $nodeId would yield: $otherNodes")
 
@@ -53,6 +53,7 @@ case class Server(nodeId: String, allNodes: List[String]) {
   def checkAck(envelope: Envelope, retryCount: Int = 0): Unit = {
     synchronized {
       if (!acksReceived.containsKey(envelope.body.msg_id) && retryCount < maxRetries) {
+        log(s"re-sending message with id: ${envelope.body.msg_id} - retry_count: $retryCount")
         send(envelope)
         val delay = 1000// * Math.min(1 + retryCount, 5)
         scheduler.schedule(new Runnable {

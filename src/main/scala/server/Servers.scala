@@ -49,7 +49,7 @@ object Servers {
       t
     })
     private val pendingMessages = new ConcurrentHashMap[Long, Any]()
-    private val idGenerator = new AtomicLong()
+    private val idGenerator = new AtomicLong(allNodes.sorted.indexOf(myId))
 
     val broadcastStrategy: Broadcasts.BroadcastStragegy = Broadcasts.SingleNodeFanOutStrategy
 

@@ -16,7 +16,7 @@ object Broadcasts {
     override def selectNodesToSend(myId: String, allNodes: List[String]): List[String] = {
       val s = allNodes.sorted
       val i = s.indexOf(myId)
-      val targets = List(i / 2, (i+1) * 2 - 1, (i+1) * 2)
+      val targets = List(i / 2, (i + 1) * 2 - 1, (i + 1) * 2)
       targets.filter(a => a >= 0 && a < allNodes.size && a != i).map(s.apply)
     }
   }
@@ -30,10 +30,10 @@ object Broadcasts {
 
     def subtree(from: String): List[String] = {
       val i = allNodes.indexOf(from)
-      (0 until n).map(j =>  (i + 1) * n + j - (n -1)).map(adjust).distinct.map(sorted.apply).toList
+      (0 until n).map(j => (i + 1) * n + j - (n - 1)).map(adjust).distinct.map(sorted.apply).toList
     }
 
-    val map: Map[String, List[String]] = sorted.map{n => (n, subtree(n))}.toMap
+    val map: Map[String, List[String]] = sorted.map { n => (n, subtree(n)) }.toMap
 
 
     override def selectNodesToSend(myId: String, allNodes: List[String]): List[String] = map(myId)
@@ -42,12 +42,13 @@ object Broadcasts {
   object RingStrategy extends BroadcastStragegy {
     override def selectNodesToSend(myId: String, allNodes: List[String]): List[String] = {
       @tailrec
-      def adjust(n: Int): Int = if(n < 0) adjust(n + allNodes.size) else if(n >= allNodes.size) adjust(n % allNodes.size) else n
+      def adjust(n: Int): Int = if (n < 0) adjust(n + allNodes.size) else if (n >= allNodes.size) adjust(n % allNodes.size) else n
+
       val s = allNodes.sorted
       val i = s.indexOf(myId)
 
-      val left = s(adjust(i-1))
-      val right = s(adjust(i+1))
+      val left = s(adjust(i - 1))
+      val right = s(adjust(i + 1))
       List(left, right)
     }
   }
@@ -71,14 +72,32 @@ object Broadcasts {
     override def selectNodesToSend(myId: String, allNodes: List[String]): List[String] = {
       val s = allNodes.sorted
       val i = s.indexOf(myId)
-      if(i == 0) s.tail
+      if (i == 0) s.tail
       else List(s.head)
+    }
+  }
+
+  object DoubleRootStrategy extends BroadcastStragegy {
+    override def selectNodesToSend(myId: String, allNodes: List[String]): List[String] = {
+      val s = allNodes.sorted
+      val i = s.indexOf(myId)
+      val mid = s.size / 2
+      val parts = s.splitAt(mid)
+      if (i == 0) {
+        parts._2.head :: parts._1.tail
+      } else if (i == mid) {
+        parts._1.head :: parts._2.tail
+      } else if (i < mid) {
+        List(parts._1.head)
+      } else {
+        List(parts._2.head)
+      }
     }
   }
 
   @main
   def main(): Unit = {
-    val all = List("n0","n1","n2","n3","n4","n5","n6","n7","n8","n9","n10","n11","n12","n13","n14","n15","n16","n17","n18","n19").sorted
+    val all = List("n0", "n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8", "n9", "n10", "n11", "n12", "n13", "n14", "n15", "n16", "n17", "n18", "n19").sorted
     println(all.zipWithIndex)
     val strat = NTreeStrategy(3, all)
     all.foreach(n => println(n + " -> " + strat.selectNodesToSend(n, all)))
