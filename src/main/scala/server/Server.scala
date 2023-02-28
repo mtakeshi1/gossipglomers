@@ -6,6 +6,7 @@ import json.messages.Chapter2.{Generate, GenerateReply}
 import json.messages.Chapter3.{Broadcast, BroadcastOk, Read, ReadOk}
 import json.messages.JSONParser.{Envelope, ReplyBody, encodeEnvelope}
 
+import java.util.Date
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentMap, Executors, ScheduledExecutorService, ThreadFactory, TimeUnit}
 import java.util.concurrent.atomic.AtomicLong
 
@@ -53,7 +54,7 @@ case class Server(nodeId: String, allNodes: List[String]) {
     synchronized {
       if (!acksReceived.containsKey(envelope.body.msg_id) && retryCount < maxRetries) {
         send(envelope)
-        val delay = 100// * Math.min(1 + retryCount, 5)
+        val delay = 1000// * Math.min(1 + retryCount, 5)
         scheduler.schedule(new Runnable {
           override def run(): Unit = checkAck(envelope, retryCount + 1)
         }, delay, TimeUnit.MILLISECONDS)
@@ -65,18 +66,19 @@ case class Server(nodeId: String, allNodes: List[String]) {
     send(envelopeFactory())
     scheduler.schedule(new Runnable {
       override def run(): Unit = checkAck(envelopeFactory())
-    }, 100, TimeUnit.MILLISECONDS)
+    }, 1000, TimeUnit.MILLISECONDS)
   }
 
   def broadcast(envelope: Envelope): Unit = {
     broadcastStrategy.selectNodesToSend(nodeId, allNodes).map(n => envelope.copy(dest = Some(n))).foreach(send)
   }
 
-  def logState(): Unit = {
-    System.err.println(s"[$nodeId] nextId: ${idGen.get()} currentState: ${received.toList} acks: ${acksReceived.keySet()}")
-  }
+  def logState(): Unit = log(s"[$nodeId] nextId: ${idGen.get()} currentState: ${received.toList} acks: ${acksReceived.keySet()}")
 
-  def log(msg: String): Unit = System.err.println(msg)
+
+  def log(msg: String): Unit = synchronized {
+    System.err.println(new Date().toString + " -> " + msg)
+  }
 
   def handle(envelope: Envelope): Unit = {
     synchronized {
