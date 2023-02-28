@@ -1,10 +1,12 @@
 package server
 
-import json.messages.JSONParser.{Envelope, ReplyBody}
+import json.messages.JSONParser.{Envelope, ReplyBody, MessageBody}
 import json.messages.Broadcasts
+import json.messages.BasicMessages._
 
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{ConcurrentHashMap, Executors, ScheduledExecutorService, TimeUnit}
+import scala.language.postfixOps
 
 object Servers {
 
@@ -26,6 +28,18 @@ object Servers {
     def retryDelayMillis: Int = 1000
 
     def newId(): Long
+  }
+
+  trait MessageHandler[A <: MessageBody] {
+    def handleMessage(env: Envelope, body: A, node: NodeImpl): Unit
+  }
+
+  object EchoHandler extends MessageHandler[Echo] {
+    override def handleMessage(env: Envelope, body: Echo, node: NodeImpl): Unit = {
+      //case Echo(echo, msg_id) => Main.send(Envelope(envelope.dest, envelope.src, EchoReply(echo, newId(), msg_id)))
+      val reply = env.replyWithBody(EchoReply(body.echo, node.newId(), body.msg_id))
+      node.sendMessage(() => reply)
+    }
   }
 
   case class ThreadConfinedServer(myId: String, allNodes: List[String]) extends NodeImpl {
