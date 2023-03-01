@@ -8,6 +8,7 @@ import json.messages.JSONParser.Envelope
 import server.Servers.Node
 
 import java.io.{BufferedReader, InputStreamReader}
+import java.util.Date
 
 object Main {
 
@@ -20,12 +21,12 @@ object Main {
     } yield {
       (maybeServer, env.body) match {
         case (None, InitBody(msgId, myId, allNodes)) => {
-          val server = Servers.ThreadConfinedServer(myId, allNodes)
-          server.registerMessageHandler("echo", Handlers2.EchoHandler)
-          server.registerMessageHandler("generate", Handlers2.GenerateHandler)
-          server.registerMessageHandler("topology", Handlers2.TopologyHandler)
-          server.registerMessageHandler("broadcast", Handlers3.BroadcastHandler)
-          server.registerMessageHandler("read", Handlers3.ReadHandler)
+          val server = Servers.ThreadConfinedServer(myId, allNodes, env => send(env))
+          Handlers2.registerHandlers(server)
+//          server.registerMessageHandler("broadcast", Handlers3.BroadcastHandler)
+//          server.registerMessageHandler("read", Handlers3.ReadHandler)
+//          Handlers3.registerHandlers(server)
+          Handlers3e.registerHandlers(server)
           maybeServer = Some(server)
           write(Envelope(env.dest, env.src, InitReply(msgId + 1, msgId)).toJson)
         }
@@ -42,7 +43,7 @@ object Main {
   def write(json: Json): Unit = {
     this.synchronized {
       val str = json.noSpaces
-      System.err.println("sending " + str)
+      System.err.println(s"${new Date()} -> sending $str")
       System.out.println(str)
       System.out.flush()
       System.out.flush()
@@ -58,7 +59,7 @@ object Main {
         return
       }
       if (!line.isBlank) {
-        System.err.println("received " + line)
+        System.err.println(s"${new Date()} -> received $line")
         parse(line) match
           case Right(envelope) => handle(envelope)
           case Left(error) => throw error

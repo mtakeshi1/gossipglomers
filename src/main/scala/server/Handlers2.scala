@@ -3,9 +3,9 @@ package server
 import json.messages.BasicMessages.{Echo, EchoReply, Topology, TopologyOk}
 import json.messages.Chapter2.{Generate, GenerateReply}
 import json.messages.JSONParser.Envelope
-import server.Servers.{MessageHandler, NodeImpl}
+import server.Servers.{HandlerRegister, MessageHandler, NodeImpl}
 
-object Handlers2 {
+object Handlers2 extends HandlerRegister {
 
 
   object EchoHandler extends MessageHandler[Echo] {
@@ -29,4 +29,9 @@ object Handlers2 {
     override def handleMessage(env: Envelope, body: Generate, node: NodeImpl): Unit = node.sendMessage(() => env.replyWithBody(GenerateReply(node.newId(), body.msg_id, node.newId())))
   }
 
+  override def registerHandlers(server: NodeImpl): Unit = {
+    server.registerMessageHandler("echo", EchoHandler)
+    server.registerMessageHandler("generate", GenerateHandler)
+    server.registerMessageHandler("topology", TopologyHandler)
+  }
 }

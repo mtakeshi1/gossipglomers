@@ -33,13 +33,23 @@ object Servers {
 
     def newId(): Long
     def broadcastTarget: List[String]
+    def isAcked(msgId: Long):Boolean
+    def log(message: => String): Unit = synchronized {
+      System.err.println(message)
+    }
+    def delay(task: Runnable, delayyMillis: Long): Unit
+
   }
 
   trait MessageHandler[A <: MessageBody] {
     def handleMessage(env: Envelope, body: A, node: NodeImpl): Unit
   }
 
-  case class ThreadConfinedServer(myId: String, allNodes: List[String]) extends NodeImpl {
+  trait HandlerRegister {
+    def registerHandlers(node: NodeImpl): Unit
+  }
+  
+  case class ThreadConfinedServer(myId: String, allNodes: List[String], messagePublisher: Envelope => Unit) extends NodeImpl {
     private val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1, (r: Runnable) => {
       val t = new Thread(r)
       t.setDaemon(true)
@@ -50,8 +60,6 @@ object Servers {
     private val handlers = new ConcurrentHashMap[String, List[MessageHandler[_]]]()
     val broadcastStrategy: Broadcasts.BroadcastStragegy = Broadcasts.SingleNodeFanOutStrategy
 
-//    def otherNodes: List[String] = bro
-    
     override def newId(): Long = idGenerator.addAndGet(allNodes.size)
 
     def registerMessageHandler(messageType: String, messageHandler: MessageHandler[_]): Unit = scheduler.submit(new Runnable() {
@@ -59,7 +67,8 @@ object Servers {
         handlers.put(messageType, messageHandler :: handlers.getOrDefault(messageType, List()))
       }
     })
-
+    def delay(task: Runnable, delayyMillis: Long): Unit = scheduler.schedule(task, delayyMillis, TimeUnit.MILLISECONDS)
+    def isAcked(msgId: Long):Boolean = !pendingMessages.containsKey(msgId)
 
     def handleMessage(env: Envelope): Unit = scheduler.submit(new Runnable {
       override def run(): Unit = {
@@ -76,8 +85,6 @@ object Servers {
 
     def broadcastTarget: List[String] = broadcastStrategy.selectNodesToSend(myId, allNodes)
 
-    def log(message: => String): Unit = synchronized { System.err.println(message) }
-
     private def doHandleMessage(env: Envelope): Unit = {
       val removed = env.body match
         case e:ReplyBody => pendingMessages.remove(e.in_reply_to) != null
@@ -87,7 +94,7 @@ object Servers {
       if(toinvoke == null && !env.body.isInstanceOf[ReplyBody]) log(s"cannot handle message of type: ${env.body.typeName}")
       else toinvoke.foreach(h => h.asInstanceOf[MessageHandler[MessageBody]].handleMessage(env, env.body.asInstanceOf, this))
     }
-    private def doSendMessage(env: Envelope): Unit = Main.send(env)
+    private def doSendMessage(env: Envelope): Unit = messagePublisher(env)
     private def doSendMessageDurably(env: () => Envelope, messageId: Long, retryCount: Int): Unit = {
       doSendMessage(env())
       scheduler.schedule(new Runnable {

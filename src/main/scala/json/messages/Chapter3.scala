@@ -13,6 +13,8 @@ object Chapter3 extends BodyDecoder {
       case Some("broadcast_ok") => body.as[BroadcastOk]
       case Some("read") => body.as[Read]
       case Some("read_ok") => body.as[ReadOk]
+      case Some("broadcast_many") => body.as[BroadcastMany]
+      case Some("broadcast_many_ok") => body.as[BroadcastManyOk]
       case a => Left(DecodingFailure("unknown type: " + a, List()))
 
 
@@ -24,6 +26,16 @@ object Chapter3 extends BodyDecoder {
 
   case class BroadcastOk(msg_id: Long, in_reply_to: Long) extends ReplyBody {
     override def typeName: String = "broadcast_ok"
+  }
+
+  case class BroadcastMany(msg_id: Long, messages: List[Long]) extends MessageBody {
+    override def typeName: String = "broadcast_many"
+
+    override def subFields: List[(String, Any)] = List(("messages", messages))
+  }
+
+  case class BroadcastManyOk(msg_id: Long, in_reply_to: Long) extends ReplyBody {
+    override def typeName: String = "broadcast_many_ok"
   }
 
   //  implicit val broadcastDecoder: Decoder[Broadcast] = deriveDecoder
