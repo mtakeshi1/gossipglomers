@@ -5,24 +5,31 @@ import io.circe.parser.*
 import json.messages.BasicMessages.*
 import json.messages.JSONParser
 import json.messages.JSONParser.Envelope
+import server.Servers.Node
 
 import java.io.{BufferedReader, InputStreamReader}
 
 object Main {
 
   @volatile
-  private var maybeServer: Option[Server] = None
+  private var maybeServer: Option[Node] = None
 
   def handle(json: Json): Unit = {
     for {
       env <- JSONParser.decodeEnvelope.decodeJson(json)
     } yield {
       (maybeServer, env.body) match {
-        case (None, InitBody(msgId, myId, otherNodes)) => {
-          maybeServer = Some(Server(myId, otherNodes))
+        case (None, InitBody(msgId, myId, allNodes)) => {
+          val server = Servers.ThreadConfinedServer(myId, allNodes)
+          server.registerMessageHandler("echo", Handlers2.EchoHandler)
+          server.registerMessageHandler("generate", Handlers2.GenerateHandler)
+          server.registerMessageHandler("topology", Handlers2.TopologyHandler)
+          server.registerMessageHandler("broadcast", Handlers3.BroadcastHandler)
+          server.registerMessageHandler("read", Handlers3.ReadHandler)
+          maybeServer = Some(server)
           write(Envelope(env.dest, env.src, InitReply(msgId + 1, msgId)).toJson)
         }
-        case (Some(server), _) => server.handle(env)
+        case (Some(server), _) => server.handleMessage(env)
         case _ => sys.error(s"unknown state: $maybeServer $env")
       }
     }
@@ -31,7 +38,7 @@ object Main {
   def send(env: Envelope): Unit = {
     write(env.toJson)
   }
-  
+
   def write(json: Json): Unit = {
     this.synchronized {
       val str = json.noSpaces

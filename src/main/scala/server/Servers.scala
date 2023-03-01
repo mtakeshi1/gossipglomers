@@ -1,8 +1,9 @@
 package server
 
-import json.messages.JSONParser.{Envelope, ReplyBody, MessageBody}
+import json.messages.JSONParser.{Envelope, MessageBody, ReplyBody}
 import json.messages.Broadcasts
-import json.messages.BasicMessages._
+import json.messages.BasicMessages.*
+import json.messages.Chapter2.{Generate, GenerateReply}
 
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{ConcurrentHashMap, Executors, ScheduledExecutorService, TimeUnit}
@@ -16,6 +17,9 @@ object Servers {
     def myId: String
 
     def handleMessage(env: Envelope): Unit
+
+    def registerMessageHandler(messageType: String, messageHandler: MessageHandler[_]): Unit
+
   }
 
   trait NodeImpl extends Node {
@@ -28,18 +32,11 @@ object Servers {
     def retryDelayMillis: Int = 1000
 
     def newId(): Long
+    def broadcastTarget: List[String]
   }
 
   trait MessageHandler[A <: MessageBody] {
     def handleMessage(env: Envelope, body: A, node: NodeImpl): Unit
-  }
-
-  object EchoHandler extends MessageHandler[Echo] {
-    override def handleMessage(env: Envelope, body: Echo, node: NodeImpl): Unit = {
-      //case Echo(echo, msg_id) => Main.send(Envelope(envelope.dest, envelope.src, EchoReply(echo, newId(), msg_id)))
-      val reply = env.replyWithBody(EchoReply(body.echo, node.newId(), body.msg_id))
-      node.sendMessage(() => reply)
-    }
   }
 
   case class ThreadConfinedServer(myId: String, allNodes: List[String]) extends NodeImpl {
@@ -50,10 +47,20 @@ object Servers {
     })
     private val pendingMessages = new ConcurrentHashMap[Long, Any]()
     private val idGenerator = new AtomicLong(allNodes.sorted.indexOf(myId))
-
+    private val handlers = new ConcurrentHashMap[String, List[MessageHandler[_]]]()
     val broadcastStrategy: Broadcasts.BroadcastStragegy = Broadcasts.SingleNodeFanOutStrategy
 
+//    def otherNodes: List[String] = bro
+    
     override def newId(): Long = idGenerator.addAndGet(allNodes.size)
+
+    def registerMessageHandler(messageType: String, messageHandler: MessageHandler[_]): Unit = scheduler.submit(new Runnable() {
+      override def run(): Unit = {
+        handlers.put(messageType, messageHandler :: handlers.getOrDefault(messageType, List()))
+      }
+    })
+
+
     def handleMessage(env: Envelope): Unit = scheduler.submit(new Runnable {
       override def run(): Unit = {
         doHandleMessage(env)
@@ -72,10 +79,13 @@ object Servers {
     def log(message: => String): Unit = synchronized { System.err.println(message) }
 
     private def doHandleMessage(env: Envelope): Unit = {
-      env.body match
-        case e:ReplyBody => pendingMessages.remove(e.in_reply_to)
-        case _ => {}
-      ???
+      val removed = env.body match
+        case e:ReplyBody => pendingMessages.remove(e.in_reply_to) != null
+        case _ => false
+
+      val toinvoke = handlers.get(env.body.typeName)
+      if(toinvoke == null && !env.body.isInstanceOf[ReplyBody]) log(s"cannot handle message of type: ${env.body.typeName}")
+      else toinvoke.foreach(h => h.asInstanceOf[MessageHandler[MessageBody]].handleMessage(env, env.body.asInstanceOf, this))
     }
     private def doSendMessage(env: Envelope): Unit = Main.send(env)
     private def doSendMessageDurably(env: () => Envelope, messageId: Long, retryCount: Int): Unit = {
