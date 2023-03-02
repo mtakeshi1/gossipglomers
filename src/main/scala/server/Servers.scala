@@ -13,13 +13,10 @@ object Servers {
 
   trait Node {
     def allNodes: List[String]
-
     def myId: String
-
     def handleMessage(env: Envelope): Unit
-
     def registerMessageHandler(messageType: String, messageHandler: MessageHandler[_]): Unit
-
+    def newId(): Long
   }
 
   trait NodeImpl extends Node {
@@ -30,8 +27,7 @@ object Servers {
     def maxRetries: Int = Integer.MAX_VALUE
 
     def retryDelayMillis: Int = 1000
-
-    def newId(): Long
+    
     def broadcastTarget: List[String]
     def isAcked(msgId: Long):Boolean
     def log(message: => String): Unit = synchronized {

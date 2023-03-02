@@ -23,9 +23,6 @@ object Main {
         case (None, InitBody(msgId, myId, allNodes)) => {
           val server = Servers.ThreadConfinedServer(myId, allNodes, env => send(env))
           Handlers2.registerHandlers(server)
-//          server.registerMessageHandler("broadcast", Handlers3.BroadcastHandler)
-//          server.registerMessageHandler("read", Handlers3.ReadHandler)
-//          Handlers3.registerHandlers(server)
           Handlers3e.registerHandlers(server)
           maybeServer = Some(server)
           write(Envelope(env.dest, env.src, InitReply(msgId + 1, msgId)).toJson)

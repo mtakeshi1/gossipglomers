@@ -1,2 +1,3 @@
-# gossipglomers
-my attempt at doing https://fly.io/blog/gossip-glomers/
+- start converting everything to v2
+- handlers should be objects inside regular classes
+- handlers should parse the bodies
