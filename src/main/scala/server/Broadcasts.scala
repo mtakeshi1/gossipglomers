@@ -1,4 +1,4 @@
-package json.messages
+package server
 
 import scala.annotation.tailrec
 

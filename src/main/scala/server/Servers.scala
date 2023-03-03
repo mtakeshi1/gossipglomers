@@ -1,7 +1,6 @@
 package server
 
 import json.messages.JSONParser.{Envelope, MessageBody, ReplyBody}
-import json.messages.Broadcasts
 import json.messages.BasicMessages.*
 import json.messages.Chapter2.{Generate, GenerateReply}
 
