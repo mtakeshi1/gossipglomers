@@ -8,6 +8,8 @@ import java.util.concurrent.{LinkedBlockingQueue, SynchronousQueue, TimeUnit}
 
 class BroadcastManyTest {
 
+  
+  
   def setup(): (LinkedBlockingQueue[Envelope], ThreadConfinedServer) = {
     val queue = new LinkedBlockingQueue[Envelope]()
     val server = ThreadConfinedServer("n3", List("n0","n1","n2","n3"), env => queue.put(env))

@@ -14,7 +14,6 @@ object Chapter2 extends BodyDecoder {
       case a => Left(DecodingFailure("unknown type: " + a, List()))
   }
 
-
   case class Generate(msg_id: Long) extends MessageBody {
     override def typeName: String = "generate"
   }

@@ -46,12 +46,12 @@
             <artifactId>circe-generic_3</artifactId>
             <version>${circe.version}</version>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>dev.mccue</groupId>-->
-<!--            <artifactId>json</artifactId>-->
-<!--            <version>0.2.1</version>-->
-<!--        </dependency>-->
-
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_2.13</artifactId>
+            <version>3.2.15</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

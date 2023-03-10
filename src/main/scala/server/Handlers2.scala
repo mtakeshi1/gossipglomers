@@ -7,7 +7,6 @@ import server.Servers.{HandlerRegister, MessageHandler, NodeImpl}
 
 object Handlers2 extends HandlerRegister {
 
-
   object EchoHandler extends MessageHandler[Echo] {
     override def handleMessage(env: Envelope, body: Echo, node: NodeImpl): Unit = {
       //case Echo(echo, msg_id) => Main.send(Envelope(envelope.dest, envelope.src, EchoReply(echo, newId(), msg_id)))

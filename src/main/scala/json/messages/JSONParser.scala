@@ -46,7 +46,9 @@ object JSONParser {
     def in_reply_to: Long
 
     override def toJson: Json = {
-      val l = List(("type", Json.fromString(this.typeName)), ("msg_id", Json.fromLong(this.msg_id)), ("in_reply_to", Json.fromLong(this.in_reply_to))) ++ subFields.map((k, v) => (k, anyToJson(v)))
+      val l = List(("type", Json.fromString(this.typeName)),
+        ("msg_id", Json.fromLong(this.msg_id)),
+        ("in_reply_to", Json.fromLong(this.in_reply_to))) ++ subFields.map((k, v) => (k, anyToJson(v)))
       Json.obj(l: _*)
     }
   }
@@ -59,32 +61,30 @@ object JSONParser {
     def replyWithBody(newBody: MessageBody): Envelope = Envelope(dest, src, newBody)
   }
 
-  implicit val encodeEnvelope: Encoder[Envelope] = new Encoder[Envelope]:
-    override def apply(a: Envelope): Json =
-      Json.obj(("src", a.src.map(Json.fromString).getOrElse(Json.Null)),
-        ("dest", a.dest.map(Json.fromString).getOrElse(Json.Null)),
-        ("body", a.body.toJson))
+  implicit val encodeEnvelope: Encoder[Envelope] = (a: Envelope) =>
+    Json.obj(("src", a.src.map(Json.fromString).getOrElse(Json.Null)),
+      ("dest", a.dest.map(Json.fromString).getOrElse(Json.Null)),
+      ("body", a.body.toJson))
 
   def parseBody(maybeBody: Result[Json]): Result[MessageBody] = {
     maybeBody match
       case Left(value) => Left(value)
       case Right(value) => {
-        bodyDecoders.to(LazyList).map( dec => dec.decodeBody(value)).find(_.isRight).getOrElse(Left(DecodingFailure("cannot decode: " + value, List())))
-//        BasicMessages.decodeBody(value)
-//          .orElse(Chapter2.decodeBody(value))
+        bodyDecoders.to(LazyList).map(dec => dec.decodeBody(value)).find(_.isRight).getOrElse(Left(DecodingFailure("cannot decode: " + value, List())))
+        //        BasicMessages.decodeBody(value)
+        //          .orElse(Chapter2.decodeBody(value))
       }
   }
 
-  implicit val decodeEnvelope: Decoder[Envelope] = new Decoder[Envelope]:
-    override def apply(c: HCursor): Result[Envelope] = {
-      for {
-        src <- c.downField("src").as[Option[String]]
-        dest <- c.downField("dest").as[Option[String]]
-        body <- parseBody(c.downField("body").as[Json])
-      } yield {
-        Envelope(src, dest, body)
-      }
+  implicit val decodeEnvelope: Decoder[Envelope] = (c: HCursor) => {
+    for {
+      src <- c.downField("src").as[Option[String]]
+      dest <- c.downField("dest").as[Option[String]]
+      body <- parseBody(c.downField("body").as[Json])
+    } yield {
+      Envelope(src, dest, body)
     }
+  }
 
   object Envelope {
 
