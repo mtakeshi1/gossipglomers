@@ -79,6 +79,7 @@ object Broadcasts {
 
   object DoubleRootStrategy extends BroadcastStragegy {
     override def selectNodesToSend(myId: String, allNodes: List[String]): List[String] = {
+      if(allNodes.size < 2) return List()
       val s = allNodes.sorted
       val i = s.indexOf(myId)
       val mid = s.size / 2

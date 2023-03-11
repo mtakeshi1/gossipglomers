@@ -16,6 +16,7 @@ object BasicTypesV2 {
       case None => Json.Null
       case Some(s) => anyToJson(s)
       case l: List[_] => Json.arr(l.map(anyToJson): _*)
+      case s: Set[_]=> Json.arr(s.toList.map(anyToJson): _*)
       case j: Json => j
       case m: Map[_, _] => Json.fromJsonObject(JsonObject(m.map((k, v) => (k.toString, anyToJson(v))).toList: _*))
       case _ => sys.error("??? " + a)

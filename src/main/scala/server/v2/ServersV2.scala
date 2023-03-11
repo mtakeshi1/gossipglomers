@@ -85,14 +85,15 @@ object ServersV2 {
 
     final def handleMessage(envelope: EnvelopeV2): Unit = executor.submit(() => doHandleMessage(envelope))
 
-    final def sendMessageDurably(messageId: Long, msg: EnvelopeV2): Unit = sendMessageHandleResponse(messageId, msg, _ => {})
+    final def sendMessageDurably(msg: EnvelopeV2): Unit = sendMessageHandleResponse(msg, _ => {})
 
-    final def sendMessageHandleResponse(messageId: Long, msg: EnvelopeV2, responseCallback: EnvelopeV2 => Unit, retries: Int = 0): Unit = {
+    final def sendMessageHandleResponse(msg: EnvelopeV2, responseCallback: EnvelopeV2 => Unit, retries: Int = 0): Unit = {
+      val messageId = msg.body.msg_id
       messageCallbacks.put(messageId, responseCallback)
       sendMessage(msg)
       delay(() => {
         if (!isAcked(messageId) && retries < maxRetries) {
-          sendMessageHandleResponse(messageId, msg, responseCallback, retries + 1)
+          sendMessageHandleResponse(msg, responseCallback, retries + 1)
         }
       }, retryDelayMillis)
     }
@@ -104,7 +105,14 @@ object ServersV2 {
         }
         case _ => {}
       messageHandlers.filter(_.isDefinedFor(envelope)).flatMap { h =>
-        h.handleMessage(envelope, this)
+        try {
+          h.handleMessage(envelope, this)
+        } catch {
+          case e:Exception => {
+            e.printStackTrace()
+            throw e
+          }
+        }
       }.foreach(sendMessage)
     }
 
