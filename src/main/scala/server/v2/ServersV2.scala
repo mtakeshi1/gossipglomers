@@ -103,7 +103,7 @@ object ServersV2 {
           messageCallbacks.remove(in_reply_to).foreach(_.apply(envelope))
         }
         case _ => {}
-      messageHandlers.flatMap { h =>
+      messageHandlers.filter(_.isDefinedFor(envelope)).flatMap { h =>
         h.handleMessage(envelope, this)
       }.foreach(sendMessage)
     }
@@ -170,9 +170,7 @@ object ServersV2 {
       log(s"<<<: $line")
       for {
         json <- parser.parse(line)
-        _ = log(s"json parsed: $json")
         env <- BasicTypesV2.envelopeDecoder.decodeJson(json)
-        _ = log(s"envelope parsed: $env")
       } yield {
         env
       }
@@ -193,9 +191,7 @@ object ServersV2 {
     val io = ConsoleIO
     val server = for {
       msg <- io.nextMessage()
-      _ = io.log(s"read: $msg")
       init <- BasicTypesV2.initBodyDecoder.decodeJson(msg.body.toJson)
-      _ = io.log(s"decoded: $init")
     } yield {
       val server = DelayedServer(init.node_id, init.node_ids, executor, io)
       messageHandlers.foreach(server.registerMessageHandler)

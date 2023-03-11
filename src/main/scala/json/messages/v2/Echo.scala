@@ -6,8 +6,6 @@ import io.circe.parser.*
 import io.circe.syntax.*
 
 object Echo {
-  
-  // TODO echo
   case class Echo(echo: String, msg_id: Long)
   case class EchoReply(echo: String, msg_id: Long, in_reply_to: Long)
 

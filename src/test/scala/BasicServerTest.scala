@@ -5,9 +5,10 @@ import json.messages.v2.BasicTypesV2
 import io.circe.generic.auto.*
 import io.circe.syntax.*
 import json.messages.v2.Echo
-import server.v2.BasicMessageHandlers.EchoHandler
+import server.v2.BasicMessageHandlers.{EchoHandler, IdGeneratorHandler}
+import server.v2.ServersV2.MessageHandler
 
-class EchoTest {
+class BasicServerTest {
 
   def parseEnvelope(raw: String): EnvelopeV2 = {
     val r = for {
@@ -63,6 +64,25 @@ class EchoTest {
 
   }
 
+  def receiveReply(input: String, handlers: MessageHandler*): EnvelopeV2 = {
+    val server = TestServer()
+    handlers.foreach(server.registerMessageHandler)
+    (for {
+      json <- parser.parse(input)
+      env <- BasicTypesV2.envelopeDecoder.decodeJson(json)
+    } yield {
+      server.handleMessage(env)
+    }).swap.foreach {
+      throw _
+    }
+    server.executor.runAllTasks()
+    Assert.assertEquals(1, server.messageIO.outputBuffer.size)
+    server.messageIO.outputBuffer.remove(0)
+  }
 
+  @Test
+  def testBasicGenerate(): Unit = {
+    val reply = receiveReply("""{"id":8,"src":"c8","dest":"n0","body":{"type":"generate","msg_id":1}}""", IdGeneratorHandler)
+  }
 
 }
